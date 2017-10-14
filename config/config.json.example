@@ -1,0 +1,24 @@
+{
+  "development": {
+    "PORT": 3000,
+    "PROTOCOL": "http",
+    "DOMAIN": "localhost",
+    "DB_DOMAIN": "localhost",
+    "DATABASE_NAME": "eag_db",
+    "IP_WHITE_LIST": [
+      "::1",
+      "::ffff:127.0.0.1"
+    ]
+  },
+  "production": {
+    "PORT": 80,
+    "PROTOCOL": "http",
+    "DOMAIN": "207.154.201.232",
+    "DB_DOMAIN": "localhost",
+    "DATABASE_NAME": "eag_db",
+    "IP_WHITE_LIST": [
+      "::1",
+      "::ffff:127.0.0.1"
+    ]
+  }
+}
