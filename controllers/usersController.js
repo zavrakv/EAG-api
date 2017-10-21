@@ -14,7 +14,7 @@ const user = {
   },
   
   createUser(req, response) {
-    const userPassConfirm = User.confirmPasswordEquality(req.body.password, req.body.repeatedPassword);
+    const userPassConfirm = User.confirmPasswordEquality(req.body.password, req.body.confirmPassword);
     
     if (!userPassConfirm) {
       response.send({ statusCode: 400, message:`Passwords are not identical!` });
