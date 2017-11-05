@@ -59,14 +59,15 @@ const user = {
       user.checkPassword(req.body.password, person.password)
         .then(() => {
           const token = user.generateToken(person._id);
-          response.set({ Authorization: `Bearer ${token}` }).send({ message: 'Welcome', _id: person._id });
+          response.set({ Authorization: `Bearer ${token}` })
+            .send({ statusCode: 200, message: 'Welcome', _id: person._id, token });
         })
         .catch((err) => {
-          response.send({ status: 400, message: err });
+          response.send({ statusCode: 400, message: err });
         });
     })
     .catch(() => {
-      response.send({ status: 400, message: 'No user found' });
+      response.send({ statusCode: 400, message: 'No user found' });
     });
   }
     
