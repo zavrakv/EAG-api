@@ -141,191 +141,10 @@ const Abbyy = {
                 
                 
                 dictionary.Body.forEach((bodyItem) => {
-                  
                   if (bodyItem.Node === "Paragraph") {
-                    bodyItem.Markup.forEach((node) => {
-                      if (node.Node === "Transcription") {
-                        resultTranslation[index].transcription = node.Text;
-                      } else if (node.Node === "Sound") {
-                        resultTranslation[index].soundArr.push(node.FileName)
-                      } else if (node.Node === "Abbrev") {
-                        let extractedPartOfSpeech = Abbyy.getPartOfSpeech(node.Text);
-                        if (extractedPartOfSpeech) {
-                          partOfSpeech = extractedPartOfSpeech;
-                          resultTranslation[index].translations.push({partOfSpeech, variants: []})
-                        }
-                      }
-                    })
+                  
                   } else if (bodyItem.Node === "List") {
-                    let bodyItemNodeType = bodyItem.Type;
-                    bodyItem.Items.forEach((listItem) => {
-                      if (listItem.Node === "ListItem") {
-                        listItem.Markup.forEach((nodeItem, nodeIndex) => {
-                          if (nodeItem.Node === "Paragraph") {
-                            nodeItem.Markup.forEach((paragraphItem) => {
-                              
-                              // console.log();
-                              // console.log(nodeIndex > 0);
-                              // console.log("-----");
-                              
-                              if (paragraphItem.Node === "Abbrev") {
-                                let extractedPartOfSpeech = Abbyy.getPartOfSpeech(paragraphItem.Text);
-                                if (extractedPartOfSpeech) {
-                                  partOfSpeech = extractedPartOfSpeech;
-                                  resultTranslation[index].translations.push({partOfSpeech, variants: []})
-                                }
-                              }
-                              if (nodeIndex > 0 || bodyItemNodeType === 3) {
-                                if (paragraphItem.Node !== "Abbrev") {
-                                  resultTranslation[index].translations.forEach((translation) => {
-                                    if (translation.partOfSpeech === partOfSpeech) {
-                                      translation.variants.push(paragraphItem.Text)
-                                    }
-                                  })
-                                }
-                                
-                              }
-                            })
-                          } else if (nodeItem.Node === "List") {
-                            let NodeType = nodeItem.Type;
-                            nodeItem.Items.forEach((listItem) => {
-                              
-                              if (listItem.Node === "ListItem") {
-                                let isSynonymBlock = false;
-                                let variant = "";
-                                let prefix = "";
-                                let synonyms = [];
-                                listItem.Markup.forEach((markupItem) => {
-                                  if (markupItem.Node === "Caption") {
-                                    isSynonymBlock = true;
-                                  }
-                                  
-                                  if (markupItem.Node === "Paragraph") {
-                                    markupItem.Markup.forEach((paragraphItem) => {
-                                      
-                                      if (paragraphItem.Node === "Comment") {
-                                        paragraphItem.Markup.forEach((comment) => {
-                                          variant += comment.Text;
-                                        })
-                                      }
-                                      
-                                      if (paragraphItem.Node === "Abbrev") {
-                                        paragraphItem.Text += "||";
-                                      }
-                                      
-                                      if (paragraphItem.Text !== null && paragraphItem.Node !== "CardRef" && !isSynonymBlock) {
-                                        // if (NodeType === 3) {
-                                        //  variant += paragraphItem.Text;
-                                        // } else if (NodeType === 4) {
-                                        //  variant += paragraphItem.Text;
-                                        // }
-                                        variant += paragraphItem.Text;
-                                      }
-                                      if (paragraphItem.Node === "CardRef") {
-                                        synonyms.push(paragraphItem.Text);
-                                      }
-                                      
-                                      
-                                    });
-                                    resultTranslation[index].translations.forEach((translation) => {
-                                      if (translation.partOfSpeech === partOfSpeech && !isSynonymBlock) {
-                                        
-                                        let pipeIndex = variant.lastIndexOf("||");
-                                        
-                                        if (pipeIndex > 0) {
-                                          
-                                          prefix = variant.slice(0, pipeIndex);
-                                          prefix = prefix.replace(/\|\|/g, "");
-                                          variant = variant.slice(pipeIndex + 2)
-                                        }
-                                        
-                                        translation.variants.push({
-                                          prefix: prefix,
-                                          variant: variant,
-                                          synonyms: []
-                                        });
-                                      } else if (translation.partOfSpeech === partOfSpeech && isSynonymBlock) {
-                                        translation.variants[translation.variants.length - 1].synonyms.push(synonyms);
-                                      }
-                                    });
-                                  } else if (markupItem.Node === "List") {
-                                    markupItem.Items.forEach((listItem) => {
-                                      if (listItem.Node === "ListItem") {
-                                        let isSynonymBlock = false;
-                                        let variant = "";
-                                        let prefix = "";
-                                        let synonyms = [];
-                                        listItem.Markup.forEach((markupItem) => {
-                                          
-                                          if (markupItem.Node === "Caption") {
-                                            isSynonymBlock = true;
-                                          }
-                                          
-                                          if (markupItem.Node === "Paragraph") {
-                                            
-                                            markupItem.Markup.forEach((paragraphItem) => {
-                                              if (paragraphItem.Node === "Comment") {
-                                                paragraphItem.Markup.forEach((comment) => {
-                                                  variant += comment.Text;
-                                                })
-                                              }
-                                              
-                                              if (paragraphItem.Node === "Abbrev") {
-                                                paragraphItem.Text += "||";
-                                              }
-                                              
-                                              if (paragraphItem.Text !== null && paragraphItem.Node !== "CardRef" && !isSynonymBlock) {
-                                                
-                                                variant += paragraphItem.Text;
-                                                // if (NodeType === 3) {
-                                                //  variant += paragraphItem.Text;
-                                                // } else if (NodeType === 4) {
-                                                //  variant += paragraphItem.Text;
-                                                // } else if (NodeType === 2) {
-                                                //  variant += paragraphItem.Text;
-                                                // }
-                                              }
-                                              if (paragraphItem.Node === "CardRef") {
-                                                synonyms.push(paragraphItem.Text);
-                                              }
-                                              
-                                            });
-                                            
-                                            console.log(resultTranslation[index].translations);
-                                            resultTranslation[index].translations.forEach((translation) => {
-                                              console.log(!isSynonymBlock)
-                                              if (translation.partOfSpeech === partOfSpeech && !isSynonymBlock) {
-                                                
-                                                let pipeIndex = variant.lastIndexOf("||");
-                                                
-                                                if (pipeIndex > 0) {
-                                                  
-                                                  prefix = variant.slice(0, pipeIndex);
-                                                  prefix = prefix.replace(/\|\|/g, "");
-                                                  variant = variant.slice(pipeIndex + 2)
-                                                }
-                                                
-                                                translation.variants.push({
-                                                  prefix: prefix,
-                                                  variant: variant,
-                                                  synonyms: []
-                                                });
-                                              } else if (translation.partOfSpeech === partOfSpeech && isSynonymBlock) {
-                                                translation.variants[translation.variants.length - 1].synonyms.push(synonyms);
-                                              }
-                                            });
-                                          }
-                                        })
-                                      }
-                                    })
-                                  }
-                                })
-                              }
-                            })
-                          }
-                        })
-                      }
-                    })
+                    Abbyy.processList(bodyItem);
                   }
                 })
               });
@@ -338,6 +157,46 @@ const Abbyy = {
         });
       })
       .catch((err) => console.error(err));
+  },
+  
+  processList(node) {
+    if (node.Type === 1) {
+      node.Items.forEach((listItem) => {
+        if (listItem.Node === "ListItem") {
+          Abbyy.processListItem(listItem);
+        }
+      })
+    } else if (node.Type === 2) {
+      node.Items.forEach((listItem) => {
+        if (listItem.Node === "ListItem") {
+          Abbyy.processListItem(listItem);
+        }
+      })
+    } else if (node.Type === 3) {
+      node.Items.forEach((listItem) => {
+        Abbyy.processListItem(listItem);
+      })
+    } else if (node.Type === 4) {
+    
+    }
+  },
+  
+  processListItem(listItem) {
+    listItem.Markup.forEach((item) => {
+      if (item.Node === "List") {
+        Abbyy.processList(item)
+      } else if (item.Node === "Paragraph") {
+        item.Markup.forEach((p) => {
+          Abbyy.processPartOfSpeech(p);
+        })
+      }
+    });
+  },
+  
+  processPartOfSpeech(node) {
+    if (node.Node === "Abbrev") {
+      console.log(node.FullText);
+    }
   },
   
   getPartOfSpeech(abbrev) {
