@@ -128,23 +128,24 @@ const Abbyy = {
               
               const resultTranslation = [];
               
-              let partOfSpeech = "";
-              
               Translations.forEach((dictionary, index) => {
                 
                 resultTranslation.push({
                   dictionary: dictionary.Dictionary,
                   transcription: "",
                   soundArr: [],
-                  translations: []
+                  translations: [],
+                  currentPartOfSpeech: ""
                 });
                 
                 
                 dictionary.Body.forEach((bodyItem) => {
                   if (bodyItem.Node === "Paragraph") {
-                  
+                    resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
+                    Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index)
+                    
                   } else if (bodyItem.Node === "List") {
-                    Abbyy.processList(bodyItem);
+                    Abbyy.processList(bodyItem, resultTranslation, index);
                   }
                 })
               });
@@ -159,50 +160,99 @@ const Abbyy = {
       .catch((err) => console.error(err));
   },
   
-  processList(node) {
+  processList(node, translationArr, index) {
     if (node.Type === 1) {
       node.Items.forEach((listItem) => {
         if (listItem.Node === "ListItem") {
-          Abbyy.processListItem(listItem);
+          Abbyy.processListItem(listItem, translationArr, index);
         }
       })
     } else if (node.Type === 2) {
       node.Items.forEach((listItem) => {
         if (listItem.Node === "ListItem") {
-          Abbyy.processListItem(listItem);
+          Abbyy.processListItem(listItem, translationArr, index);
         }
       })
     } else if (node.Type === 3) {
       node.Items.forEach((listItem) => {
-        Abbyy.processListItem(listItem);
+        Abbyy.processListItem(listItem, translationArr, index);
       })
     } else if (node.Type === 4) {
-    
+      node.Items.forEach((listItem) => {
+        Abbyy.processListItem(listItem, translationArr, index, node.Type);
+      })
     }
   },
   
-  processListItem(listItem) {
+  processListItem(listItem, translationArr, index, nodeType) {
     listItem.Markup.forEach((item) => {
-      if (item.Node === "List") {
-        Abbyy.processList(item)
-      } else if (item.Node === "Paragraph") {
-        item.Markup.forEach((p) => {
-          Abbyy.processPartOfSpeech(p);
-        })
+      if (item.Node === "Paragraph") {
+        Abbyy.setPartOfSpeech(item.Markup, translationArr, index);
+      } else if (item.Node === "List") {
+        Abbyy.processList(item, translationArr, index);
+      }
+      
+      if (nodeType === 4) {
+        Abbyy.processTextNode(item, translationArr, index);
       }
     });
   },
   
+  processTextNode(item, translationArr, index) {
+    if (item.hasOwnProperty("Markup")) {
+      let variantPiece = "";
+      item.Markup.forEach((textNode) => {
+        if (textNode.Node === "Text") {
+          variantPiece += textNode.Text;
+        } else if (textNode.Node === "Comment") {
+          textNode.Markup.forEach((comment) => {
+            variantPiece += comment.Text;
+          })
+        }
+      });
+      let currentPartOfSpeech = translationArr[index].currentPartOfSpeech;
+      translationArr[index].translations.forEach((item) => {
+        if (item.partOfSpeech === currentPartOfSpeech) {
+          item.variants.push({ variant: variantPiece })
+        }
+      });
+    }
+  },
+  
   processPartOfSpeech(node) {
     if (node.Node === "Abbrev") {
-      console.log(node.FullText);
+      return Abbyy.getPartOfSpeech(node.Text); /*TODO: use full text and change switch cases*/
     }
+  },
+  
+  setPartOfSpeech(items, array, arrIndex) {
+    for (let i = 0; i < items.length; i++) {
+      let partOfSpeech = Abbyy.processPartOfSpeech(items[i]);
+      if (partOfSpeech) {
+        array[arrIndex].translations.push({ partOfSpeech, variants: [] });
+        array[arrIndex].currentPartOfSpeech = partOfSpeech;
+        break;
+      }
+    }
+  },
+  
+  getTranscription(items) {
+  
+    let transcription = "";
+    
+    items.forEach((node) => {
+      if (node.Node === "Transcription") {
+        transcription = node.Text;
+      }
+    });
+  
+    return transcription;
   },
   
   getPartOfSpeech(abbrev) {
     
     let partOfSpeech = "";
-    
+    /*TODO: not all dictionaries have the same FullTexts for cases of partsOfSpeech so we need to create a multiple case*/
     switch (abbrev) {
       case "сущ." :
         partOfSpeech = "Noun";
