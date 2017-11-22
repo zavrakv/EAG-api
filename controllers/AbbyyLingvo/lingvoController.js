@@ -161,25 +161,15 @@ const Abbyy = {
   },
   
   processList(node, translationArr, index) {
-    if (node.Type === 1) {
+    if (node.Type === 1 || node.Type === 2) {
       node.Items.forEach((listItem) => {
         if (listItem.Node === "ListItem") {
           Abbyy.processListItem(listItem, translationArr, index);
         }
       })
-    } else if (node.Type === 2) {
-      node.Items.forEach((listItem) => {
-        if (listItem.Node === "ListItem") {
-          Abbyy.processListItem(listItem, translationArr, index);
-        }
-      })
-    } else if (node.Type === 3) {
+    } else if (node.Type === 3 || node.Type === 4) {
       node.Items.forEach((listItem) => {
         Abbyy.processListItem(listItem, translationArr, index);
-      })
-    } else if (node.Type === 4) {
-      node.Items.forEach((listItem) => {
-        Abbyy.processListItem(listItem, translationArr, index, node.Type);
       })
     }
   },
@@ -188,12 +178,9 @@ const Abbyy = {
     listItem.Markup.forEach((item) => {
       if (item.Node === "Paragraph") {
         Abbyy.setPartOfSpeech(item.Markup, translationArr, index);
+        Abbyy.processTextNode(item, translationArr, index, nodeType);
       } else if (item.Node === "List") {
         Abbyy.processList(item, translationArr, index);
-      }
-      
-      if (nodeType === 4) {
-        Abbyy.processTextNode(item, translationArr, index);
       }
     });
   },
@@ -201,22 +188,64 @@ const Abbyy = {
   processTextNode(item, translationArr, index) {
     if (item.hasOwnProperty("Markup")) {
       let variantPiece = "";
+      let notes = "";
+      let synonyms = "";
+      /*TODO: process OR cut off antonyms!*/
+      let isSynonymsBlock = false;
+      let currentPartOfSpeech = translationArr[index].currentPartOfSpeech;
+      
       item.Markup.forEach((textNode) => {
-        if (textNode.Node === "Text") {
-          variantPiece += textNode.Text;
-        } else if (textNode.Node === "Comment") {
+        if (textNode.Node === "CardRef") {
+          isSynonymsBlock = true;
+        }
+        
+        if (textNode.Node === "Abbrev") {
+          let isPartOfSpeech = Abbyy.getPartOfSpeech(textNode.Text);
+          if (textNode.Text && !isPartOfSpeech) {
+            notes += textNode.Text;
+          }
+        }
+        if (((textNode.Node === "Text") ) && !isSynonymsBlock) {
+          if (textNode.Text && textNode.Text.trim() !== ";") {
+            variantPiece += textNode.Text;
+          }
+        } else if (textNode.Node === "Comment" && !isSynonymsBlock) {
           textNode.Markup.forEach((comment) => {
-            variantPiece += comment.Text;
+            if (comment.Text) {
+              variantPiece += comment.Text;
+            }
           })
         }
+        if (isSynonymsBlock) {
+          synonyms += textNode.Text + " ";
+        }
       });
-      let currentPartOfSpeech = translationArr[index].currentPartOfSpeech;
+      
       translationArr[index].translations.forEach((item) => {
         if (item.partOfSpeech === currentPartOfSpeech) {
-          item.variants.push({ variant: variantPiece })
+          
+          if (variantPiece) {
+            notes = Abbyy.prettifyNotes(notes);
+            item.variants.push({ notes, variant: variantPiece, synonyms });
+          }
+          if (synonyms) {
+            synonyms = Abbyy.prettifySynonyms(synonyms);
+            item.variants[item.variants.length - 1].synonyms = synonyms;
+          }
         }
       });
     }
+  },
+
+  prettifyNotes(notes) {
+    return notes.replace(/\.(?=[a-zA-ZА-Яа-я])/g,'. ').trim();
+  },
+
+  prettifySynonyms(synonyms) {
+    return synonyms.replace(/[^A-Za-z0-9_\- ]+/g, " ")
+      .replace(/\b(?=[MDCLXVI]+\b)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})|([\d]+)\b/g, "")
+      .trim()
+      .replace(/[ ]{2,}/g, ", ")
   },
   
   processPartOfSpeech(node) {
