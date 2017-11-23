@@ -134,7 +134,7 @@ const Abbyy = {
                   dictionary: dictionary.Dictionary,
                   transcription: "",
                   soundArr: [],
-                  translations: [],
+                  translations: {},
                   currentPartOfSpeech: ""
                 });
                 
@@ -174,31 +174,37 @@ const Abbyy = {
     }
   },
   
-  processListItem(listItem, translationArr, index, nodeType) {
+  processListItem(listItem, translationArr, index) {
+    let isSynonymsBlock = false;
+    let isAuxiliaryBlock = false;
     listItem.Markup.forEach((item) => {
       if (item.Node === "Paragraph") {
         Abbyy.setPartOfSpeech(item.Markup, translationArr, index);
-        Abbyy.processTextNode(item, translationArr, index, nodeType);
+        Abbyy.processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock);
       } else if (item.Node === "List") {
         Abbyy.processList(item, translationArr, index);
+      } else if (item.Node === "Caption" && item.Text === "Syn:") {
+        isSynonymsBlock = true;
+      } else if (item.Node === "Caption" && item.Text !== "Syn:") {
+        isAuxiliaryBlock = true;
       }
     });
   },
   
-  processTextNode(item, translationArr, index) {
+  processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock) {
     if (item.hasOwnProperty("Markup")) {
       let variantPiece = "";
       let notes = "";
       let synonyms = "";
-      /*TODO: process OR cut off antonyms!*/
-      let isSynonymsBlock = false;
       let currentPartOfSpeech = translationArr[index].currentPartOfSpeech;
       
       item.Markup.forEach((textNode) => {
-        if (textNode.Node === "CardRef") {
-          isSynonymsBlock = true;
+        if (textNode.Node === "CardRef" && item.Markup.length === 1 && !isAuxiliaryBlock) {
+          synonyms += textNode.Text;
+        } else if (isSynonymsBlock) {
+          synonyms += textNode.Text + " ";
         }
-        
+        /*TODO: doesn't work in all cases. ram -> баба молота (there is no note: тех.)*/
         if (textNode.Node === "Abbrev") {
           let isPartOfSpeech = Abbyy.getPartOfSpeech(textNode.Text);
           if (textNode.Text && !isPartOfSpeech) {
@@ -216,24 +222,25 @@ const Abbyy = {
             }
           })
         }
-        if (isSynonymsBlock) {
-          synonyms += textNode.Text + " ";
-        }
       });
       
-      translationArr[index].translations.forEach((item) => {
-        if (item.partOfSpeech === currentPartOfSpeech) {
-          
-          if (variantPiece) {
-            notes = Abbyy.prettifyNotes(notes);
-            item.variants.push({ notes, variant: variantPiece, synonyms });
-          }
-          if (synonyms) {
-            synonyms = Abbyy.prettifySynonyms(synonyms);
-            item.variants[item.variants.length - 1].synonyms = synonyms;
+      if (translationArr[index].translations.hasOwnProperty(currentPartOfSpeech)) {
+        
+        for (let item in translationArr[index].translations) {
+          if (item === currentPartOfSpeech) {
+            if (variantPiece) {
+            
+              notes = Abbyy.prettifyNotes(notes);
+              translationArr[index].translations[item].push({ notes, variant: variantPiece, synonyms });
+            }
+            if (synonyms && !isAuxiliaryBlock) {
+              synonyms = Abbyy.prettifySynonyms(synonyms);
+              translationArr[index].translations[item][translationArr[index].translations[item].length - 1].synonyms = synonyms;
+            }
           }
         }
-      });
+      }
+      
     }
   },
 
@@ -257,12 +264,25 @@ const Abbyy = {
   setPartOfSpeech(items, array, arrIndex) {
     for (let i = 0; i < items.length; i++) {
       let partOfSpeech = Abbyy.processPartOfSpeech(items[i]);
+      let isSet = Abbyy.isSetPartOfSpeech(array[arrIndex].translations, partOfSpeech);
       if (partOfSpeech) {
-        array[arrIndex].translations.push({ partOfSpeech, variants: [] });
         array[arrIndex].currentPartOfSpeech = partOfSpeech;
+        if (!isSet) {
+          array[arrIndex].translations[partOfSpeech] = [];
+        }
         break;
       }
     }
+  },
+  
+  isSetPartOfSpeech(arr, candidatePartOfSpeech) {
+    let isSet = false;
+    for (let part in arr) {
+      if(part === candidatePartOfSpeech) {
+        isSet = true;
+      }
+    }
+    return isSet;
   },
   
   getTranscription(items) {
