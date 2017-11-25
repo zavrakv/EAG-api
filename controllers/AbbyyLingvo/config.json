@@ -1,0 +1,8 @@
+{
+  "host": "developers.lingvolive.com",
+  "authenticate": "/api/v1.1/authenticate",
+  "miniCard": "/api/v1/Minicard",
+  "translation": "/api/v1/Translation",
+  "audio": "/api/v1/Sound",
+  "apiKey": "YWQwZjI0NTgtNDIxNC00MTgxLTkzMmYtZWFhNjNlZTNhYWFiOmYxYTc3Y2VjMWU5MTQ3NzM5ZDg4ZWViOWU0ODMzNGNh"
+}

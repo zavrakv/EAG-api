@@ -1,4 +1,5 @@
 const { Association } = require('../models/association');
+const Abbyy = require('./AbbyyLingvo/lingvoController');
 const env = process.env.NODE_ENV;
 const config = require('../config/config.json')[env];
 const https = require('https');
@@ -12,6 +13,7 @@ const association = {
   findAssociations(req, res) {
   
     const term = req.body.keyword;
+    const offset = req.body.offset;
     
     let response_handler = function (response) {
       let body = '';
@@ -19,13 +21,7 @@ const association = {
         body += d;
       });
       response.on('end', function () {
-        console.log('\nRelevant Headers:\n');
-        for (var header in response.headers)
-          // header keys are lower-cased by Node.js
-          if (header.startsWith("bingapis-") || header.startsWith("x-msedge-"))
-            console.log(header + ": " + response.headers[header]);
         body = JSON.parse(body);
-        console.log('\nJSON Response:\n');
         res.send({ statusCode: 200, body });
       });
       response.on('error', function (e) {
@@ -34,11 +30,10 @@ const association = {
     };
   
     let bing_image_search = function (search) {
-      console.log('Searching images for: ' + term);
       let request_params = {
         method : 'GET',
         hostname : host,
-        path : path + '?q=' + encodeURIComponent(search),
+        path : path + '?q=' + encodeURIComponent(search) + '&offset=' + offset,
         headers : {
           'Ocp-Apim-Subscription-Key' : subscriptionKey,
         }
@@ -54,6 +49,20 @@ const association = {
       console.log('Invalid Bing Search API subscription key!');
       console.log('Please paste yours into the source code.');
     }
+  },
+  
+  getTranslation(req, res) {
+    Abbyy.getTranslation(req.body.keyword)
+      .then((miniCard) => {
+        res.send({ statusCode: 200, miniCard });
+      });
+  },
+  
+  getAudio(req, res) {
+    Abbyy.getAudioFile(req.body.DictionaryName, req.body.SoundName)
+      .then((audio) => {
+        res.send({ audio });
+      });
   }
   
 };
