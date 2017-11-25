@@ -13,6 +13,7 @@ const association = {
   findAssociations(req, res) {
   
     const term = req.body.keyword;
+    const offset = req.body.offset;
     
     let response_handler = function (response) {
       let body = '';
@@ -32,7 +33,7 @@ const association = {
       let request_params = {
         method : 'GET',
         hostname : host,
-        path : path + '?q=' + encodeURIComponent(search),
+        path : path + '?q=' + encodeURIComponent(search) + '&offset=' + offset,
         headers : {
           'Ocp-Apim-Subscription-Key' : subscriptionKey,
         }

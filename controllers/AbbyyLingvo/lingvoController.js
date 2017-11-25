@@ -142,7 +142,13 @@ const Abbyy = {
                 dictionary.Body.forEach((bodyItem) => {
                   if (bodyItem.Node === "Paragraph") {
                     resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
-                    Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index)
+                    Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
+                    
+                    bodyItem.Markup.forEach((node) => {
+                      if (node.Node === "Sound") {
+                        resultTranslation[index].soundArr.push(node.FileName);
+                      }
+                    })
                     
                   } else if (bodyItem.Node === "List") {
                     Abbyy.processList(bodyItem, resultTranslation, index);
@@ -177,10 +183,12 @@ const Abbyy = {
   processListItem(listItem, translationArr, index) {
     let isSynonymsBlock = false;
     let isAuxiliaryBlock = false;
+    let isSingularAbbrevBlock = false;
+    
     listItem.Markup.forEach((item) => {
       if (item.Node === "Paragraph") {
         Abbyy.setPartOfSpeech(item.Markup, translationArr, index);
-        Abbyy.processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock);
+        Abbyy.processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock, isSingularAbbrevBlock);
       } else if (item.Node === "List") {
         Abbyy.processList(item, translationArr, index);
       } else if (item.Node === "Caption" && item.Text === "Syn:") {
@@ -191,7 +199,7 @@ const Abbyy = {
     });
   },
   
-  processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock) {
+  processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock, isSingularAbbrevBlock) {
     if (item.hasOwnProperty("Markup")) {
       let variantPiece = "";
       let notes = "";
@@ -204,11 +212,14 @@ const Abbyy = {
         } else if (isSynonymsBlock) {
           synonyms += textNode.Text + " ";
         }
-        /*TODO: doesn't work in all cases. ram -> баба молота (there is no note: тех.)*/
+        
         if (textNode.Node === "Abbrev") {
           let isPartOfSpeech = Abbyy.getPartOfSpeech(textNode.Text);
           if (textNode.Text && !isPartOfSpeech) {
             notes += textNode.Text;
+            if (item.Markup.length === 1) {
+              isSingularAbbrevBlock = true;
+            }
           }
         }
         if (((textNode.Node === "Text") ) && !isSynonymsBlock) {
@@ -225,17 +236,25 @@ const Abbyy = {
       });
       
       if (translationArr[index].translations.hasOwnProperty(currentPartOfSpeech)) {
-        
         for (let item in translationArr[index].translations) {
           if (item === currentPartOfSpeech) {
-            if (variantPiece) {
             
+            if (variantPiece) {
               notes = Abbyy.prettifyNotes(notes);
-              translationArr[index].translations[item].push({ notes, variant: variantPiece, synonyms });
+              
+              if (translationArr[index].cachedNotes) {
+                translationArr[index].translations[item].push({ notes: translationArr[index].cachedNotes, variant: variantPiece, synonyms });
+                translationArr[index].cachedNotes = "";
+              } else {
+                translationArr[index].translations[item].push({ notes, variant: variantPiece, synonyms });
+              }
             }
             if (synonyms && !isAuxiliaryBlock) {
               synonyms = Abbyy.prettifySynonyms(synonyms);
               translationArr[index].translations[item][translationArr[index].translations[item].length - 1].synonyms = synonyms;
+            }
+            if (isSingularAbbrevBlock) {
+              translationArr[index].cachedNotes = notes;
             }
           }
         }
