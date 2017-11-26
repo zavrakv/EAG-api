@@ -2,18 +2,15 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const associationSchema = new Schema({
-  userFirstName: String,
-  userLastName: String,
-  email: {
-    type: String,
-    unique: true,
-  },
-  password: {
-    type: String,
-    min: 6,
-    max: 32,
-  },
-  
+  originalWord: String,
+  translation: String,
+  transcription: String,
+  dictionary: String,
+  soundArr: Array,
+  imgUrl: String,
+  notes: String,
+  partOfSpeech: String,
+  synonyms: String, /*TODO: maybe we should split this with comma to array? for synonyms learning mode*/
 }, {
   timestamps: {
     createdAt: 'created_at',
@@ -24,11 +21,10 @@ const associationSchema = new Schema({
 /**
  * @memberOf Association
  */
-// associationSchema.statics.confirmPasswordEquality = function (pass, repeatedPass) {
-//
-//   return pass === repeatedPass;
-// };
+associationSchema.statics.isNotUniqueAssociation = function (candidateVariant, variant) {
+  return candidateVariant === variant;
+};
 
 const Association = mongoose.model('Association', associationSchema);
 
-module.exports = { Association };
+module.exports = { associationSchema, Association };

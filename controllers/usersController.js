@@ -19,7 +19,7 @@ const user = {
   generateToken: (_id) => {
     const JWT_SECRET = config.JWT_SECRET;
     return jwt.sign({
-      data: _id,
+      id: _id,
     }, JWT_SECRET);
   },
   
@@ -70,7 +70,7 @@ const user = {
       response.send({ statusCode: 400, message: 'No user found' });
     });
   }
-    
+  
 };
 
 module.exports = user;

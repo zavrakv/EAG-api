@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const { associationSchema } = require('./association');
 
 const userSchema = new Schema({
   userFirstName: String,
@@ -13,7 +14,7 @@ const userSchema = new Schema({
     min: 6,
     max: 32,
   },
-  
+  associations: [associationSchema],
 }, {
   timestamps: {
     createdAt: 'created_at',

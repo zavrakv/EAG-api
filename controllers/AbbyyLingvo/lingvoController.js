@@ -141,7 +141,10 @@ const Abbyy = {
                 
                 dictionary.Body.forEach((bodyItem) => {
                   if (bodyItem.Node === "Paragraph") {
-                    resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
+                    if (!resultTranslation[index].transcription) {
+                      resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
+                    }
+                    
                     Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
                     
                     bodyItem.Markup.forEach((node) => {
@@ -211,6 +214,10 @@ const Abbyy = {
           synonyms += textNode.Text;
         } else if (isSynonymsBlock) {
           synonyms += textNode.Text + " ";
+        }
+        
+        if (textNode.Node === "Transcription") {
+          translationArr[index].transcription = Abbyy.getTranscription(item.Markup);
         }
         
         if (textNode.Node === "Abbrev") {
