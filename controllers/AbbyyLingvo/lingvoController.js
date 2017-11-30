@@ -234,7 +234,8 @@ const Abbyy = {
           }
         }
         if (((textNode.Node === "Text") ) && !isSynonymsBlock) {
-          if (textNode.Text && textNode.Text.trim() !== ";") {
+          let isEnglishTextNode = Abbyy.detectEnglishWords(textNode.Text);
+          if (textNode.Text && textNode.Text.trim() !== ";" && !isEnglishTextNode) {
             variantPiece += textNode.Text;
           }
         } else if (textNode.Node === "Comment" && !isSynonymsBlock) {
@@ -285,6 +286,11 @@ const Abbyy = {
       .replace(/[ ]{2,}/g, ", ")
   },
   
+  detectEnglishWords(word) {
+    const isEnglish = /[A-Za-z]/g;
+    return isEnglish.test(word);
+  },
+  
   processPartOfSpeech(node) {
     if (node.Node === "Abbrev") {
       return Abbyy.getPartOfSpeech(node.Text); /*TODO: use full text and change switch cases*/
@@ -317,15 +323,15 @@ const Abbyy = {
   
   getTranscription(items) {
   
-    let transcription = "";
+    let transcription = [];
     
     items.forEach((node) => {
       if (node.Node === "Transcription") {
-        transcription = node.Text;
+        transcription.push(node.Text);
       }
     });
   
-    return transcription;
+    return transcription.join(", ");
   },
   
   getPartOfSpeech(abbrev) {
