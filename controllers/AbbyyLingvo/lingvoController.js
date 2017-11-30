@@ -139,7 +139,7 @@ const Abbyy = {
                 });
                 
                 
-                dictionary.Body.forEach((bodyItem) => {
+                dictionary.Body.forEach((bodyItem, i) => {
                   if (bodyItem.Node === "Paragraph") {
                     if (!resultTranslation[index].transcription) {
                       resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
@@ -151,7 +151,11 @@ const Abbyy = {
                       if (node.Node === "Sound") {
                         resultTranslation[index].soundArr.push(node.FileName);
                       }
-                    })
+                    });
+                    
+                    if (i === 2) {
+                      Abbyy.processTextNode(bodyItem, resultTranslation, index)
+                    }
                     
                   } else if (bodyItem.Node === "List") {
                     Abbyy.processList(bodyItem, resultTranslation, index);
