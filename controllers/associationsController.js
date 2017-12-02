@@ -1,4 +1,5 @@
 const { Association } = require('../models/association');
+const { User } = require('../models/user');
 const Abbyy = require('./AbbyyLingvo/lingvoController');
 const env = process.env.NODE_ENV;
 const config = require('../config/config.json')[env];
@@ -63,6 +64,59 @@ const association = {
       .then((audio) => {
         res.send({ audio });
       });
+  },
+  
+  saveAssociation(req, res) {
+    const { association, userId } = req.body;
+    
+    User.findById(userId)
+      .then((user) => {
+        const assocs = user.associations;
+        
+        let promise = new Promise((resolve, reject) => {
+          for (let i = 0; i < assocs.length; i++) {
+            if (association.originalWord === assocs[i].originalWord) {
+              if (Association.isNotUniqueAssociation(association.translation, assocs[i].translation)) {
+                reject('Is not unique pair "original word - translation"');
+                break;
+              }
+            }
+          }
+          resolve('Is unique');
+        });
+        
+        promise.then(() => {
+          user.associations.push(association);
+          user.save()
+            .then(() => {
+              res.send({ msg: `Association for word '${association.originalWord}' was successfully created!`, statusCode: 200 });
+            })
+            .catch((err) => {
+              res.send({ err });
+            });
+        })
+        .catch((err) => {
+          res.send({ err, statusCode: 400 })
+        });
+        
+      })
+      .catch((err) => {
+        res.send({ err });
+      });
+  },
+  
+  getAssociationList(req, res) {
+    const { offset, pageSize, userId } = req.query;
+    User.findById(userId)
+      .then((user) => {
+        const totalCount = user.associations.length;
+        let page = user.associations.splice(offset, pageSize);
+        
+        res.send({ page, totalCount })
+      })
+      .catch((err) => {
+        res.send({ err })
+      })
   }
   
 };
