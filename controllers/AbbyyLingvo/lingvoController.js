@@ -66,10 +66,15 @@ const Abbyy = {
   },
   
   getAudioFile(dictionary, fileName) {
+    // console.time('getAudio');
+    // console.time('auth');
+    /*TODO: auth takes 350ms extra to fulfill request. remove this*/
     return Abbyy._authenticate()
       .then((token) => {
         this.token = token;
-        
+        // console.timeEnd('auth');
+  
+        // console.time('requestAudio')
         const headers = {
           "Authorization": `Bearer ${this.token}`,
           "Content-Type": "audio/wav"
@@ -91,6 +96,8 @@ const Abbyy = {
             });
             response.on('end', () => {
               body = body.join('').toString();
+              // console.timeEnd('requestAudio');
+              // console.timeEnd('getAudio');
               resolve(body);
             });
             response.on('error', (err) => reject(err));
@@ -147,9 +154,23 @@ const Abbyy = {
                     
                     Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
                     
+                    let audioObj = {};
+                    
                     bodyItem.Markup.forEach((node) => {
+                      if (node.Node === "Abbrev") {
+                        let type = Abbyy.getPronunciationType(node.Text);
+                        
+                        if (type) {
+                          audioObj.type = type;
+                          audioObj.fullText = node.FullText;
+                        }
+                      }
                       if (node.Node === "Sound") {
-                        resultTranslation[index].soundArr.push(node.FileName);
+                        audioObj.filename = node.FileName;
+                      }
+                      if (audioObj['type'] && audioObj['filename']) {
+                        resultTranslation[index].soundArr.push(audioObj);
+                        audioObj = {};
                       }
                     });
                     
@@ -369,6 +390,23 @@ const Abbyy = {
     
     return partOfSpeech;
   },
+  
+  getPronunciationType(type) {
+    let pronunciationType = '';
+    
+    switch (type) {
+      case 'амер.':
+        pronunciationType = 'amer.';
+        break;
+      case 'брит.':
+        pronunciationType = 'brit.';
+        break;
+      default:
+        pronunciationType = ''
+    }
+    
+    return pronunciationType;
+  }
   
 };
 
