@@ -147,9 +147,23 @@ const Abbyy = {
                     
                     Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
                     
+                    let audioObj = {};
+                    
                     bodyItem.Markup.forEach((node) => {
+                      if (node.Node === "Abbrev") {
+                        let type = Abbyy.getPronunciationType(node.Text);
+                        
+                        if (type) {
+                          audioObj.type = type;
+                          audioObj.fullText = node.FullText;
+                        }
+                      }
                       if (node.Node === "Sound") {
-                        resultTranslation[index].soundArr.push(node.FileName);
+                        audioObj.filename = node.FileName;
+                      }
+                      if (audioObj['type'] && audioObj['filename']) {
+                        resultTranslation[index].soundArr.push(audioObj);
+                        audioObj = {};
                       }
                     });
                     
@@ -369,6 +383,23 @@ const Abbyy = {
     
     return partOfSpeech;
   },
+  
+  getPronunciationType(type) {
+    let pronunciationType = '';
+    
+    switch (type) {
+      case 'амер.':
+        pronunciationType = 'amer.';
+        break;
+      case 'брит.':
+        pronunciationType = 'brit.';
+        break;
+      default:
+        pronunciationType = ''
+    }
+    
+    return pronunciationType;
+  }
   
 };
 
