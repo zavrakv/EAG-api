@@ -66,10 +66,15 @@ const Abbyy = {
   },
   
   getAudioFile(dictionary, fileName) {
+    // console.time('getAudio');
+    // console.time('auth');
+    /*TODO: auth takes 350ms extra to fulfill request. remove this*/
     return Abbyy._authenticate()
       .then((token) => {
         this.token = token;
-        
+        // console.timeEnd('auth');
+  
+        // console.time('requestAudio')
         const headers = {
           "Authorization": `Bearer ${this.token}`,
           "Content-Type": "audio/wav"
@@ -91,6 +96,8 @@ const Abbyy = {
             });
             response.on('end', () => {
               body = body.join('').toString();
+              // console.timeEnd('requestAudio');
+              // console.timeEnd('getAudio');
               resolve(body);
             });
             response.on('error', (err) => reject(err));
