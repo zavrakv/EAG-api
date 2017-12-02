@@ -117,6 +117,119 @@ const association = {
       .catch((err) => {
         res.send({ err })
       })
+  },
+  
+  getAssociationById(req, res) {
+    const { id, userId } = req.query;
+    User.findById(userId)
+      .then((user) => {
+        user.associations.forEach((association) => {
+    
+          if (association._id.toString() === id) {
+            res.send(association);
+          }
+        });
+      })
+      .catch((err) => {
+        res.send({ err })
+      })
+  },
+  
+  deleteAssociationById(req, res) {
+    const { id, userId } = req.query;
+    User.findById(userId)
+      .then((user) => {
+        user.associations.forEach((association, i) => {
+    
+          if (association._id.toString() === id) {
+            user.associations.splice(i, 1);
+            user.save()
+              .then(() => {
+                res.send({
+                  msg: `Association pair '${association.originalWord} - ${association.translation}' has been successfully deleted`,
+                  statusCode: 200
+                });
+              })
+              .catch((err) => {
+                res.send({ err });
+              })
+          }
+        });
+      })
+      .catch((err) => {
+        res.send({ err })
+      })
+  },
+  
+  editAssociationImage(req, res) {
+    const { id, imageUrl, userId } = req.body;
+    
+    User.findById(userId)
+      .then((user) => {
+        user.associations.forEach((association) => {
+    
+          if (association._id.toString() === id) {
+            association.imgUrl = imageUrl;
+            
+            user.save()
+              .then(() => {
+                res.send({ statusCode: 200 });
+              })
+              .catch((err) => {
+                res.send({ err });
+              })
+          }
+        });
+      })
+      .catch((err) => {
+        res.send({ err })
+      })
+  },
+  
+  editAssociationVariant(req, res) {
+    const { newVariant, userId } = req.body;
+    
+    User.findById(userId)
+      .then((user) => {
+        const assocs = user.associations;
+  
+        let promise = new Promise((resolve, reject) => {
+          for (let i = 0; i < assocs.length; i++) {
+            if (Association.isNotUniqueAssociation(newVariant.variant, assocs[i].translation)) {
+              reject('Is not unique pair "original word - translation"');
+              break;
+            }
+          }
+          resolve('Is unique');
+        });
+  
+        promise.then(() => {
+          user.associations.forEach((association) => {
+    
+            if (association._id.toString() === newVariant.id) {
+              association.translation = newVariant.variant;
+              association.synonyms = newVariant.synonyms;
+              association.notes = newVariant.notes;
+              association.partOfSpeech = newVariant.partOfSpeech;
+              association.updatedAt = new Date();
+              user.save()
+                .then(() => {
+                  res.send({ msg: `Association's variant was successfully updated` })
+                })
+                .catch((err) => {
+                  res.send({ err })
+                })
+            }
+          });
+        })
+        .catch((err) => {
+          res.send({ err, statusCode: 400 })
+        });
+        
+      })
+      .catch((err) => {
+        res.send({ err })
+      })
   }
   
 };
