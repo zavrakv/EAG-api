@@ -107,7 +107,6 @@ const association = {
   
   getAssociationList(req, res) {
     const { offset, pageSize, userId } = req.query;
-    console.log(req.query);
     User.findById(userId)
       .then((user) => {
         const totalCount = user.associations.length;
