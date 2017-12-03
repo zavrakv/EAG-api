@@ -56,7 +56,10 @@ const association = {
     Abbyy.getTranslation(req.body.keyword)
       .then((miniCard) => {
         res.send({ statusCode: 200, miniCard });
-      });
+      })
+      .catch((err) => {
+        res.send({ statusCode: 404, err: err.message })
+      })
   },
   
   getAudio(req, res) {

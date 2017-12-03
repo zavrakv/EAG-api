@@ -132,66 +132,68 @@ const Abbyy = {
             response.on('end', () => {
               
               const Translations = JSON.parse(body.join(''));
-              
               const resultTranslation = [];
               
-              Translations.forEach((dictionary, index) => {
-                
-                resultTranslation.push({
-                  dictionary: dictionary.Dictionary,
-                  transcription: "",
-                  soundArr: [],
-                  translations: {},
-                  currentPartOfSpeech: ""
+              if (Translations.length > 0 && typeof Translations !== 'string') {
+                Translations.forEach((dictionary, index) => {
+    
+                  resultTranslation.push({
+                    dictionary: dictionary.Dictionary,
+                    transcription: "",
+                    soundArr: [],
+                    translations: {},
+                    currentPartOfSpeech: ""
+                  });
+    
+                  let isSynonymsBlock = false;
+                  let isAuxiliaryBlock = false;
+    
+                  Abbyy.processBodyItem(dictionary.Body, index, resultTranslation, isSynonymsBlock, isAuxiliaryBlock);
                 });
                 
-                
-                dictionary.Body.forEach((bodyItem, i) => {
-                  if (bodyItem.Node === "Paragraph") {
-                    if (!resultTranslation[index].transcription) {
-                      resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
-                    }
-                    
-                    Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
-                    
-                    let audioObj = {};
-                    
-                    bodyItem.Markup.forEach((node) => {
-                      if (node.Node === "Abbrev") {
-                        let type = Abbyy.getPronunciationType(node.Text);
-                        
-                        if (type) {
-                          audioObj.type = type;
-                          audioObj.fullText = node.FullText;
-                        }
-                      }
-                      if (node.Node === "Sound") {
-                        audioObj.filename = node.FileName;
-                      }
-                      if (audioObj['type'] && audioObj['filename']) {
-                        resultTranslation[index].soundArr.push(audioObj);
-                        audioObj = {};
-                      }
-                    });
-                    
-                    if (i === 2) {
-                      Abbyy.processTextNode(bodyItem, resultTranslation, index)
-                    }
-                    
-                  } else if (bodyItem.Node === "List") {
-                    Abbyy.processList(bodyItem, resultTranslation, index);
-                  }
-                })
-              });
-              
-              resolve(resultTranslation);
+                resolve(resultTranslation);
+              } else {
+                reject(Translations);
+              }
               
             });
             response.on('error', (err) => reject(err));
           });
         });
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        throw new Error(err, 'Word not found');
+      });
+  },
+  
+  processBodyItem(item, index, resultTranslation, isSynonymsBlock, isAuxiliaryBlock) {
+    item.forEach((bodyItem, i) => {
+      if (bodyItem.Node === "Paragraph") {
+        if (!resultTranslation[index].transcription) {
+          resultTranslation[index].transcription = Abbyy.getTranscription(bodyItem.Markup);
+        }
+    
+        if (isSynonymsBlock) {
+          Abbyy.processTextNode(bodyItem, resultTranslation, index, isSynonymsBlock, isAuxiliaryBlock);
+        }
+    
+        Abbyy.setPartOfSpeech(bodyItem.Markup, resultTranslation, index);
+        
+        Abbyy.setAudioFiles(bodyItem.Markup, resultTranslation, index);
+    
+        if (i === 2) {
+          Abbyy.processTextNode(bodyItem, resultTranslation, index)
+        }
+    
+      } else if (bodyItem.Node === "List") {
+        Abbyy.processList(bodyItem, resultTranslation, index);
+      } else if (bodyItem.Node === "Caption" && bodyItem.Text === "Syn:") {
+        isSynonymsBlock = true;
+      } else if (bodyItem.Node === "Caption" && bodyItem.Text !== "Syn:") {
+        isAuxiliaryBlock = true;
+      }
+    });
+    
   },
   
   processList(node, translationArr, index) {
@@ -217,6 +219,7 @@ const Abbyy = {
       if (item.Node === "Paragraph") {
         Abbyy.setPartOfSpeech(item.Markup, translationArr, index);
         Abbyy.processTextNode(item, translationArr, index, isSynonymsBlock, isAuxiliaryBlock, isSingularAbbrevBlock);
+        Abbyy.setAudioFiles(item.Markup, translationArr, index);
       } else if (item.Node === "List") {
         Abbyy.processList(item, translationArr, index);
       } else if (item.Node === "Caption" && item.Text === "Syn:") {
@@ -256,12 +259,12 @@ const Abbyy = {
         }
         if (((textNode.Node === "Text") ) && !isSynonymsBlock) {
           let isEnglishTextNode = Abbyy.detectEnglishWords(textNode.Text);
-          if (textNode.Text && textNode.Text.trim() !== ";" && !isEnglishTextNode) {
+          if (textNode.Text && textNode.Text.trim() !== ";" && textNode.Text.trim() !== "," && !isEnglishTextNode) {
             variantPiece += textNode.Text;
           }
         } else if (textNode.Node === "Comment" && !isSynonymsBlock) {
           textNode.Markup.forEach((comment) => {
-            if (comment.Text) {
+            if (item.Markup.length !== 1 && comment.Text) {
               variantPiece += comment.Text;
             }
           })
@@ -294,6 +297,28 @@ const Abbyy = {
       }
       
     }
+  },
+  
+  setAudioFiles(bodyItem, resultTranslation, index) {
+    let audioObj = {};
+  
+    bodyItem.forEach((node) => {
+      if (node.Node === "Abbrev") {
+        let type = Abbyy.getPronunciationType(node.Text);
+      
+        if (type) {
+          audioObj.type = type;
+          audioObj.fullText = node.FullText;
+        }
+      }
+      if (node.Node === "Sound") {
+        audioObj.filename = node.FileName;
+      }
+      if (audioObj['type'] && audioObj['filename']) {
+        resultTranslation[index].soundArr.push(audioObj);
+        audioObj = {};
+      }
+    });
   },
 
   prettifyNotes(notes) {
