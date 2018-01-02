@@ -12,5 +12,6 @@ router.get('/api/associations/get-association-by-id', associationsController.get
 router.delete('/api/associations/delete-association-by-id', associationsController.deleteAssociationById);
 router.post('/api/associations/edit-association-variant', associationsController.editAssociationVariant);
 router.post('/api/associations/edit-association-image', associationsController.editAssociationImage);
+router.get('/api/associations/get-random-game-associations', associationsController.getRandomGameAssociations);
 
 module.exports = router;

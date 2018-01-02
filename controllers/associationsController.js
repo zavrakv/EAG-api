@@ -230,6 +230,36 @@ const association = {
       .catch((err) => {
         res.send({ err })
       })
+  },
+  
+  getRandomGameAssociations(req, res) {
+    
+    const userId = req.query.userId;
+    
+    User.findById(userId)
+      .then((user) => {
+        let arr = user.associations;
+        let pickedArr = [];
+        let count = null;
+        
+        if (user.associations.length >= 10) {
+          count = 10
+        } else if (user.associations.length !== 0) {
+          count = user.associations.length
+        }
+  
+        for (let i = 0; i < count; i++) {
+          let index = Math.floor(Math.random() * arr.length);
+          let removed = arr.splice(index, 1);
+          // Since we are only removing one element
+          pickedArr.push(removed[0]);
+        }
+        res.send({ pickedArr });
+      })
+      .catch((err) => {
+        res.send({ err });
+      })
+    
   }
   
 };
